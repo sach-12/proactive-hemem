@@ -27,8 +27,8 @@ libhemem-simple.so: policies/hemem-simple.o policies/simple.o timer.o interpose.
 libhemem-lru-swap.so: policies/hemem-lru-swap.o policies/lru_swap.o timer.o interpose.o policies/paging.o fifo.o spsc-ring.o
 	$(CC) $(LDFLAGS) -o libhemem-lru-swap.so policies/hemem-lru-swap.o timer.o policies/lru_swap.o interpose.o policies/paging.o fifo.o spsc-ring.o $(HEMEM_LIBS)
 
-libhemem-fifo-dram.so: policies/hemem-fifo-dram.o policies/fifo-dram.o timer.o interpose.o policies/paging.o fifo.o spsc-ring.o
-	$(CC) $(LDFLAGS) -o libhemem-fifo-dram.so policies/hemem-fifo-dram.o timer.o policies/fifo-dram.o interpose.o policies/paging.o fifo.o spsc-ring.o $(HEMEM_LIBS)
+libhemem-fifo-dram.so: policies/hemem-fifo-dram.o policies/fifo-dram.o timer.o interpose.o fifo.o spsc-ring.o
+    $(CC) $(LDFLAGS) -o libhemem-fifo-dram.so policies/hemem-fifo-dram.o timer.o policies/fifo-dram.o interpose.o fifo.o spsc-ring.o $(HEMEM_LIBS)
 
 hemem.o: hemem.c hemem.h pebs.h interpose.h fifo.h spsc-ring.h
 	$(CC) $(CFLAGS) $(INCLUDES) -D ALLOC_HEMEM -c hemem.c -o hemem.o
@@ -45,7 +45,7 @@ policies/hemem-simple.o: hemem.c hemem.h policies/simple.h interpose.h policies/
 policies/hemem-lru-swap.o: hemem.c hemem.h policies/lru.h interpose.h policies/paging.h fifo.h spsc-ring.h
 	$(CC) $(CFLAGS) $(INCLUDES) -D ALLOC_LRU -D LRU_SWAP -c hemem.c -o policies/hemem-lru-swap.o
 
-policies/hemem-fifo-dram.o: hemem.c hemem.h policies/fifo-dram.h interpose.h policies/paging.h fifo.h spsc-ring.h
+policies/hemem-fifo-dram.o: hemem.c hemem.h policies/fifo-dram.h interpose.h fifo.h spsc-ring.h
 	$(CC) $(CFLAGS) $(INCLUDES) -D ALLOC_FIFO_DRAM -c hemem.c -o policies/hemem-fifo-dram.o
 
 interpose.o: interpose.c interpose.h hemem.h

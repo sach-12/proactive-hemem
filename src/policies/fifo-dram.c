@@ -9,6 +9,8 @@
  *
  * =====================================================================================
  */
+
+
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -48,7 +50,8 @@ void fifo_remove_page(struct hemem_page *page)
 struct hemem_page* fifo_pagefault(void)
 {
   struct timeval start, end;
-  struct hemem_page *page, *move_out_page;
+  struct hemem_page *page, *move_out_page, *cp, *np;
+  uint64_t old_offset;
 
   gettimeofday(&start, NULL);
 
@@ -57,20 +60,29 @@ struct hemem_page* fifo_pagefault(void)
     assert(!page->present);
     page->present = true;
     fastmem += PAGE_SIZE; 
-    enqueue_fifo(&dram_active, page) 
+    enqueue_fifo(&dram_active, page);
   }
   else {
-    assert(slowmem < nvmsize);
-    page = dequeue_fifo(&nvm_free);
-    
-    assert(page != NULL);
-    assert(!page->present);
+    cp = dequeue_fifo(&dram_active);
+    assert(cp != NULL);
 
-    page->present = true;
+    // find a free nvm page to move the dram page to
+    np = dequeue_fifo(&nvm_free);
+    assert(np != NULL);
+    assert(!(np->present));
+
+    LOG("%lx: fast %lu -> slow %lu\t slowmem: %lu\t fastmem: %lu\n",
+          cp->va, cp->devdax_offset, np->devdax_offset, nvm_free.numentries, dram_active.numentries);
+
+    old_offset = cp->devdax_offset;
+    pebs_migrate_down(cp, np->devdax_offset);
+    np->devdax_offset = old_offset;
+    np->in_dram = true;
+    np->present = false;
     slowmem += PAGE_SIZE;
-    move_out_page = dequeue_fifo(&dram_active);
-    enqueue_fifo(&dram_active, page)
-    enqueue_fifo(&nvm_active, move_out_page)
+    enqueue_fifo(&dram_active, np);
+    enqueue_fifo(&nvm_active, cp);
+    return np;
   }
   gettimeofday(&end, NULL);
   LOG_TIME("mem_policy_allocate_page: %f s\n", elapsed(&start, &end));
@@ -101,7 +113,7 @@ void fifo_init(void)
     pthread_mutex_init(&(p->page_lock), NULL);
     enqueue_fifo(&nvm_free, p);
   }
-  LOG("Memory management policy is simple\n");
+  LOG("Memory management policy is fifo\n");
 }
 
 void fifo_stats()
