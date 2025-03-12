@@ -109,6 +109,17 @@ static void mmgr_list_remove_node(struct mmgr_list *list, struct mmgr_node *node
   pthread_mutex_unlock(&(list->list_lock));
 }
 
+static void prefetch_pages(struct hemem_page* page, size_t stride, int count) {
+  for (int i = 1; i <= count; i++) {
+      uint64_t prefetch_offset = page->devdax_offset + (i * stride);
+      struct hemem_page* prefetch_page = get_page_at_offset(prefetch_offset);
+      if (prefetch_page && !prefetch_page->in_dram) {
+          hemem_migrate_up(prefetch_page, prefetch_offset);
+          mmgr_list_add(&mem_active[FASTMEM][HUGEP], prefetch_page->management);
+      }
+  }
+}
+
 static void move_hot(void)
 {
   struct mmgr_list transition[NPAGETYPES];
@@ -513,12 +524,30 @@ static struct hemem_page* mmgr_allocate_page()
   return NULL;
 }
 
+static void detect_stride_pattern(struct hemem_page* page, uint64_t offset) {
+  if (page->last_access_offset != 0) {
+      uint64_t current_stride = offset - page->last_access_offset;
+      if (current_stride == page->stride) {
+          page->stride_count++;
+      } else {
+          page->stride = current_stride;
+          page->stride_count = 1;
+      }
+  }
+  page->last_access_offset = offset;
+}
+
 struct hemem_page* hemem_mmgr_pagefault()
 {
-  struct hemem_page *page;
-  
   pthread_mutex_lock(&global_lock);
-  page = mmgr_allocate_page();
+  struct hemem_page* page = mmgr_allocate_page();
+
+  detect_stride_pattern(page, page->devdax_offset);
+
+  if (page->stride_count >= STRIDE_THRESHOLD) {
+      prefetch_pages(page, page->stride, PREFETCH_COUNT);
+  }
+
   pthread_mutex_unlock(&global_lock);
   assert(page != NULL);
 
