@@ -28,7 +28,7 @@ libhemem-lru-swap.so: policies/hemem-lru-swap.o policies/lru_swap.o timer.o inte
 	$(CC) $(LDFLAGS) -o libhemem-lru-swap.so policies/hemem-lru-swap.o timer.o policies/lru_swap.o interpose.o policies/paging.o fifo.o spsc-ring.o $(HEMEM_LIBS)
 
 libhemem-fifo-dram.so: policies/hemem-fifo-dram.o policies/fifo-dram.o timer.o interpose.o fifo.o spsc-ring.o
-    $(CC) $(LDFLAGS) -o libhemem-fifo-dram.so policies/hemem-fifo-dram.o timer.o policies/fifo-dram.o interpose.o fifo.o spsc-ring.o $(HEMEM_LIBS)
+	$(CC) $(LDFLAGS) -o libhemem-fifo-dram.so policies/hemem-fifo-dram.o timer.o policies/fifo-dram.o interpose.o fifo.o spsc-ring.o $(HEMEM_LIBS)
 
 hemem.o: hemem.c hemem.h pebs.h interpose.h fifo.h spsc-ring.h
 	$(CC) $(CFLAGS) $(INCLUDES) -D ALLOC_HEMEM -c hemem.c -o hemem.o
