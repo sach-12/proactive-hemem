@@ -15,10 +15,10 @@
 #include <sched.h>
 #include <sys/ioctl.h>
 
-#include "hemem.h"
-#include "pebs.h"
-#include "timer.h"
-#include "spsc-ring.h"
+#include "../hemem.h"
+#include "../pebs.h"
+#include "../timer.h"
+#include "../spsc-ring.h"
 
 uint64_t pebs_start_cpu;
 uint64_t migration_thread_cpu;
@@ -487,7 +487,7 @@ static struct hemem_page* pebs_allocate_page() {
 }
 
 
-struct hemem_page* pebs_pagefault(void)
+struct hemem_page* fifo_pagefault(void)
 {
   struct hemem_page *page;
 
@@ -498,7 +498,7 @@ struct hemem_page* pebs_pagefault(void)
   return page;
 }
 
-void pebs_remove_page(struct hemem_page *page)
+void fifo_remove_page(struct hemem_page *page)
 {
   assert(page != NULL);
 
@@ -517,7 +517,7 @@ void pebs_remove_page(struct hemem_page *page)
   }
 }
 
-void pebs_init(void)
+void fifo_init(void)
 {
   pthread_t kswapd_thread;
   pthread_t scan_thread;
@@ -615,4 +615,9 @@ void pebs_shutdown()
 static inline double calc_miss_ratio()
 {
   return ((1.0 * accesses_cnt[NVMREAD]) / (1.0 * (accesses_cnt[DRAMREAD] + accesses_cnt[NVMREAD])));
+}
+
+void fifo_stats()
+{
+  LOG_STATS("\tfastmem_allocated: \tslowmem_allocated: \n");
 }
