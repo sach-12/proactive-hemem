@@ -103,18 +103,6 @@ static struct perf_event_mmap_page* perf_setup(__u64 config, __u64 config1, __u6
   return p;
 }
 
-void make_hot_request(struct hemem_page* page)
-{
-   page->ring_present = true;
-   ring_buf_put(hot_ring, (uint64_t*)page); 
-}
-
-void make_cold_request(struct hemem_page* page)
-{
-    page->ring_present = true;
-    ring_buf_put(cold_ring, (uint64_t*)page);
-}
-
 void *pebs_scan_thread()
 {
 #ifdef SAMPLE_BASED_COOLING
@@ -271,68 +259,6 @@ static void pebs_migrate_up(struct hemem_page *page, uint64_t offset)
   LOG_TIME("migrate_up: %f s\n", elapsed(&start, &end));
 }
 
-// moves page to hot list -- called by migrate thread
-void make_hot(struct hemem_page* page)
-{
-  assert(page != NULL);
-  assert(page->va != 0);
-
-  if (page->hot) {
-    if (page->in_dram) {
-      assert(page->list == &dram_hot_list);
-    }
-    else {
-      assert(page->list == &nvm_hot_list);
-    }
-
-    return;
-  }
-
-  if (page->in_dram) {
-    assert(page->list == &dram_cold_list);
-    page_list_remove_page(&dram_cold_list, page);
-    page->hot = true;
-    enqueue_fifo(&dram_hot_list, page);
-  }
-  else {
-    assert(page->list == &nvm_cold_list);
-    page_list_remove_page(&nvm_cold_list, page);
-    page->hot = true;
-    enqueue_fifo(&nvm_hot_list, page);
-  }
-}
-
-// moves page to cold list -- called by migrate thread
-void make_cold(struct hemem_page* page)
-{
-  assert(page != NULL);
-  assert(page->va != 0);
-
-  if (!page->hot) {
-    if (page->in_dram) {
-      assert(page->list == &dram_cold_list);
-    }
-    else {
-      assert(page->list == &nvm_cold_list);
-    }
-
-    return;
-  }
-
-  if (page->in_dram) {
-    assert(page->list == &dram_hot_list);
-    page_list_remove_page(&dram_hot_list, page);
-    page->hot = false;
-    enqueue_fifo(&dram_cold_list, page);
-  }
-  else {
-    assert(page->list == &nvm_hot_list);
-    page_list_remove_page(&nvm_hot_list, page);
-    page->hot = false;
-    enqueue_fifo(&nvm_cold_list, page);
-  }
-}
-
 static struct hemem_page* start_dram_page = NULL;
 static struct hemem_page* start_nvm_page = NULL;
 
@@ -457,24 +383,6 @@ static void partial_cool(struct fifo_list *hot, struct fifo_list *cold, bool dra
       enqueue_fifo(cold, p);
     }
   }
-}
-#endif
-
-#ifdef COOL_IN_PLACE
-void update_current_cool_page(struct hemem_page** cur_cool_in_dram, struct hemem_page** cur_cool_in_nvm, struct hemem_page* page)
-{
-    if (page == NULL) {
-        return;
-    }
-
-    if (page == *cur_cool_in_dram) {
-        assert(page->list == &dram_hot_list);
-        next_page(page->list, page, cur_cool_in_dram);
-    }
-    if (page == *cur_cool_in_nvm) {
-        assert(page->list == &nvm_hot_list);
-        next_page(page->list, page, cur_cool_in_nvm);
-    }
 }
 #endif
 
@@ -669,10 +577,8 @@ void pebs_init(void)
     enqueue_fifo(&nvm_free_list, p);
   }
 
-  pthread_mutex_init(&(dram_hot_list.list_lock), NULL);
-  pthread_mutex_init(&(dram_cold_list.list_lock), NULL);
-  pthread_mutex_init(&(nvm_hot_list.list_lock), NULL);
-  pthread_mutex_init(&(nvm_cold_list.list_lock), NULL);
+  pthread_mutex_init(&(dram_fifo_list.list_lock), NULL);
+  pthread_mutex_init(&(nvm_fifo_list.list_lock), NULL);
 
   buffer = (uint64_t**)malloc(sizeof(uint64_t*) * CAPACITY);
   assert(buffer); 
@@ -709,49 +615,4 @@ void pebs_shutdown()
 static inline double calc_miss_ratio()
 {
   return ((1.0 * accesses_cnt[NVMREAD]) / (1.0 * (accesses_cnt[DRAMREAD] + accesses_cnt[NVMREAD])));
-}
-
-
-
-void pebs_stats()
-{
-  uint64_t total_samples = 0;
-  LOG_STATS("\tdram_hot_list.numentries: [%ld]\tdram_cold_list.numentries: [%ld]\tnvm_hot_list.numentries: [%ld]\tnvm_cold_list.numentries: [%ld]\themem_pages: [%lu]\ttotal_pages: [%lu]\tzero_pages: [%ld]\tthrottle/unthrottle_cnt: [%ld/%ld]\tcools: [%ld]\n",
-          dram_hot_list.numentries,
-          dram_cold_list.numentries,
-          nvm_hot_list.numentries,
-          nvm_cold_list.numentries,
-          hemem_pages_cnt,
-          total_pages_cnt,
-          zero_pages_cnt,
-          throttle_cnt,
-          unthrottle_cnt,
-          cools);
-  LOG_STATS("\tdram_accesses: [%lu]\tnvm_accesses: [%lu]\tsamples: [", accesses_cnt[DRAMREAD], accesses_cnt[NVMREAD]);
-  for (int i = 0; i < PEBS_NPROCS ; i++) {
-    LOG_STATS("%lu ", core_accesses_cnt[i]);
-    total_samples += core_accesses_cnt[i];
-    core_accesses_cnt[i] = 0;
-  }
-  LOG_STATS("]\ttotal_samples: [%lu]\n", total_samples);
-
-  if (accesses_cnt[DRAMREAD] + accesses_cnt[NVMREAD] != 0) {
-    if (miss_ratio == -1.0) {
-      miss_ratio = calc_miss_ratio();
-    } else {
-      miss_ratio = (EWMA_FRAC * calc_miss_ratio()) + ((1 - EWMA_FRAC) * miss_ratio);
-    }
-  } else {
-    miss_ratio = -1.0;
-  }
-  fprintf(miss_ratio_f, "miss_ratio: %f\n", miss_ratio);
-  fflush(miss_ratio_f);
-
-  accesses_cnt[DRAMREAD] = accesses_cnt[NVMREAD] = 0;
-
-  fprintf(stdout, "Total: %.2f GB DRAM, %.2f GB NVM\n",
-    (double)(dram_hot_list.numentries + dram_cold_list.numentries) * ((double)PAGE_SIZE) / (1024.0 * 1024.0 * 1024.0), 
-    (double)(nvm_hot_list.numentries + nvm_cold_list.numentries) * ((double)PAGE_SIZE) / (1024.0 * 1024.0 * 1024.0));
-  fflush(stdout);
-  hemem_pages_cnt = total_pages_cnt =  throttle_cnt = unthrottle_cnt = 0;
 }
