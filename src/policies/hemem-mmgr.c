@@ -109,6 +109,27 @@ static void mmgr_list_remove_node(struct mmgr_list *list, struct mmgr_node *node
   pthread_mutex_unlock(&(list->list_lock));
 }
 
+static struct hemem_page* get_page_at_offset(uint64_t offset) {
+  struct mmgr_list* lists[] = {
+      &mem_active[FASTMEM][HUGEP],
+      &mem_active[SLOWMEM][HUGEP],
+      &mem_inactive[FASTMEM][HUGEP],
+      &mem_inactive[SLOWMEM][HUGEP]
+  };
+
+  for (int i = 0; i < 4; i++) {
+      struct mmgr_node* node = lists[i]->first;
+      while (node) {
+          if (node->page->devdax_offset == offset) {
+              return node->page;
+          }
+          node = node->next;
+      }
+  }
+  
+  return NULL;
+}
+
 static void prefetch_pages(struct hemem_page* page, size_t stride, int count) {
   for (int i = 1; i <= count; i++) {
       uint64_t prefetch_offset = page->devdax_offset + (i * stride);
