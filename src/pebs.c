@@ -168,12 +168,14 @@ void *pebs_scan_thread()
                   //      make_hot_request(page);
                   //  }
                   //}
-                  /*else*/ if (page->accesses[DRAMREAD] + page->accesses[NVMREAD] >= HOT_READ_THRESHOLD) {
+                  /*else*/ 
+                  if(page->is_prefetched==TRUE){
+                    page->is_prefetched=FALSE;
+                  } else if (page->accesses[DRAMREAD] + page->accesses[NVMREAD] >= HOT_READ_THRESHOLD) {
                     if (!page->hot && !page->ring_present) {
                         make_hot_request(page);
                     }
-                  }
-                  else if (/*(page->accesses[WRITE] < HOT_WRITE_THRESHOLD) &&*/ (page->accesses[DRAMREAD] + page->accesses[NVMREAD] < HOT_READ_THRESHOLD)) {
+                  } else if (/*(page->accesses[WRITE] < HOT_WRITE_THRESHOLD) &&*/ (page->accesses[DRAMREAD] + page->accesses[NVMREAD] < HOT_READ_THRESHOLD)) {
                     if (page->hot && !page->ring_present) {
                         make_cold_request(page);
                     }
@@ -612,6 +614,7 @@ void *pebs_policy_thread()
       struct hemem_page *prefetch_page[2];  // Array to hold two free DRAM pages
       
       prefetch_page[0] = p ;
+      p->next->is_prefetched=TRUE;
       prefetch_page[1] = p->next;
 
       for(int i=0;i<2;i++){
