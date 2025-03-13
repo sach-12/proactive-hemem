@@ -185,10 +185,6 @@ struct hemem_page {
   UT_hash_handle hh;
   struct hemem_page *next, *prev;
   struct fifo_list *list;
-
-  uint64_t last_access_offset;
-  uint64_t stride;
-  int stride_count;
 };
 
 static inline uint64_t pt_to_pagesize(enum pagetypes pt)
