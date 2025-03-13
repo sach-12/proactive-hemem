@@ -57,11 +57,13 @@ volatile bool need_cool_nvm = false;
 
 #define STRIDE_THRESHOLD 2 // Minimum occurrences to confirm a pattern
 #define PREFETCH_DISTANCE 3 // Number of strides ahead to prefetch
+#define CONFIDENCE_THRESHOLD 5  // Minimum times a stride should repeat
 
 typedef struct {
   uint64_t last_addr;
   uint64_t stride;
   int count;
+  int confidence;
 } StridePattern;
 
 StridePattern stride_patterns[PEBS_NPROCS];
@@ -206,9 +208,9 @@ void *pebs_scan_thread()
                   StridePattern *pattern = &stride_patterns[i];
                   uint64_t new_stride = ps->addr - pattern->last_addr;
 
-                  if (pattern->count >= STRIDE_THRESHOLD && new_stride == pattern->stride) {
+                  if (pattern->count >= STRIDE_THRESHOLD && pattern->confidence >= CONFIDENCE_THRESHOLD) {
                       // Prefetch next expected address
-                      uint64_t prefetch_addr = ps->addr + (PREFETCH_DISTANCE * new_stride);
+                      uint64_t prefetch_addr = ps->addr + (PREFETCH_DISTANCE * pattern->stride);
                       struct hemem_page* prefetch_page = get_hemem_page(prefetch_addr);
 
                       if (prefetch_page && !prefetch_page->in_dram) {
@@ -219,6 +221,7 @@ void *pebs_scan_thread()
                   } else {
                       // Update stride tracking
                       pattern->stride = new_stride;
+                      pattern->confidence = (pattern->stride == pattern->stride) ? pattern->confidence + 1 : 0;
                   }
 
                   pattern->last_addr = ps->addr;
