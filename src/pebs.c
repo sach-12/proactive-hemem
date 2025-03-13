@@ -128,6 +128,37 @@ void make_cold_request(struct hemem_page* page)
     ring_buf_put(cold_ring, (uint64_t*)page);
 }
 
+
+static void pebs_migrate_down(struct hemem_page *page, uint64_t offset)
+{
+  struct timeval start, end;
+
+  gettimeofday(&start, NULL);
+
+  page->migrating = true;
+  hemem_wp_page(page, true);
+  hemem_migrate_down(page, offset);
+  page->migrating = false; 
+
+  gettimeofday(&end, NULL);
+  LOG_TIME("migrate_down: %f s\n", elapsed(&start, &end));
+}
+
+static void pebs_migrate_up(struct hemem_page *page, uint64_t offset)
+{
+  struct timeval start, end;
+
+  gettimeofday(&start, NULL);
+
+  page->migrating = true;
+  hemem_wp_page(page, true);
+  hemem_migrate_up(page, offset);
+  page->migrating = false;
+
+  gettimeofday(&end, NULL);
+  LOG_TIME("migrate_up: %f s\n", elapsed(&start, &end));
+}
+
 void *pebs_scan_thread()
 {
 // #ifdef SAMPLE_BASED_COOLING
@@ -208,36 +239,6 @@ void *pebs_scan_thread()
   }
 
   return NULL;
-}
-
-static void pebs_migrate_down(struct hemem_page *page, uint64_t offset)
-{
-  struct timeval start, end;
-
-  gettimeofday(&start, NULL);
-
-  page->migrating = true;
-  hemem_wp_page(page, true);
-  hemem_migrate_down(page, offset);
-  page->migrating = false; 
-
-  gettimeofday(&end, NULL);
-  LOG_TIME("migrate_down: %f s\n", elapsed(&start, &end));
-}
-
-static void pebs_migrate_up(struct hemem_page *page, uint64_t offset)
-{
-  struct timeval start, end;
-
-  gettimeofday(&start, NULL);
-
-  page->migrating = true;
-  hemem_wp_page(page, true);
-  hemem_migrate_up(page, offset);
-  page->migrating = false;
-
-  gettimeofday(&end, NULL);
-  LOG_TIME("migrate_up: %f s\n", elapsed(&start, &end));
 }
 
 // moves page to hot list -- called by migrate thread
