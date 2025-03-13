@@ -206,7 +206,7 @@ void *pebs_scan_thread()
               if (page != NULL) {
                   // Track accesses
                   StridePattern *pattern = &stride_patterns[i];
-                  uint64_t new_stride = ps->addr - pattern->last_addr;
+                  // uint64_t new_stride = ps->addr - pattern->last_addr;
 
                   if (pattern->count >= STRIDE_THRESHOLD && pattern->confidence >= CONFIDENCE_THRESHOLD) {
                       // Prefetch next expected address
@@ -220,7 +220,7 @@ void *pebs_scan_thread()
                       }
                   } else {
                       // Update stride tracking
-                      pattern->stride = new_stride;
+                      // pattern->stride = new_stride;
                       pattern->confidence = (pattern->stride == pattern->stride) ? pattern->confidence + 1 : 0;
                   }
 
