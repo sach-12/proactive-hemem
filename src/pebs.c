@@ -55,6 +55,17 @@ int pfd[PEBS_NPROCS][NPBUFTYPES];
 volatile bool need_cool_dram = false;
 volatile bool need_cool_nvm = false;
 
+#define STRIDE_THRESHOLD 3 // Minimum occurrences to confirm a pattern
+#define PREFETCH_DISTANCE 4 // Number of strides ahead to prefetch
+
+typedef struct {
+  uint64_t last_addr;
+  uint64_t stride;
+  int count;
+} StridePattern;
+
+StridePattern stride_patterns[PEBS_NPROCS];
+
 static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, 
     int cpu, int group_fd, unsigned long flags)
 {
@@ -119,9 +130,9 @@ void make_cold_request(struct hemem_page* page)
 
 void *pebs_scan_thread()
 {
-#ifdef SAMPLE_BASED_COOLING
-  uint64_t samples_since_cool = 0;
-#endif
+// #ifdef SAMPLE_BASED_COOLING
+//   uint64_t samples_since_cool = 0;
+// #endif
 
   cpu_set_t cpuset;
   pthread_t thread;
@@ -160,75 +171,31 @@ void *pebs_scan_thread()
             
               page = get_hemem_page(pfn);
               if (page != NULL) {
-                if (page->va != 0) {
-                  page->accesses[j]++;
-                  page->tot_accesses[j]++;
-                  //if (page->accesses[WRITE] >= HOT_WRITE_THRESHOLD) {
-                  //  if (!page->hot && !page->ring_present) {
-                  //      make_hot_request(page);
-                  //  }
-                  //}
-                  /*else*/ if (page->accesses[DRAMREAD] + page->accesses[NVMREAD] >= HOT_READ_THRESHOLD) {
-                    if (!page->hot && !page->ring_present) {
-                        make_hot_request(page);
-                    }
-                  }
-                  else if (/*(page->accesses[WRITE] < HOT_WRITE_THRESHOLD) &&*/ (page->accesses[DRAMREAD] + page->accesses[NVMREAD] < HOT_READ_THRESHOLD)) {
-                    if (page->hot && !page->ring_present) {
-                        make_cold_request(page);
-                    }
-                 }
+                  // Track accesses
+                  StridePattern *pattern = &stride_patterns[i];
+                  uint64_t new_stride = ps->addr - pattern->last_addr;
 
-                  accesses_cnt[j]++;
-                  core_accesses_cnt[i]++;
+                  if (pattern->count >= STRIDE_THRESHOLD && new_stride == pattern->stride) {
+                      // Prefetch next expected address
+                      uint64_t prefetch_addr = ps->addr + (PREFETCH_DISTANCE * new_stride);
+                      struct hemem_page* prefetch_page = get_hemem_page(prefetch_addr);
 
-                  page->accesses[DRAMREAD] >>= (global_clock - page->local_clock);
-                  page->accesses[NVMREAD] >>= (global_clock - page->local_clock);
-                  //page->accesses[WRITE] >>= (global_clock - page->local_clock);
-                  page->local_clock = global_clock;
-                  #ifndef SAMPLE_BASED_COOLING
-                  if (page->accesses[j] > PEBS_COOLING_THRESHOLD) {
-                    global_clock++;
-                    cools++;
-                    need_cool_dram = true;
-                    need_cool_nvm = true;
+                      if (prefetch_page && !prefetch_page->in_dram) {
+                          // Prefetch to DRAM
+                          LOG("Stride detected! Prefetching address: 0x%lx\n", prefetch_addr);
+                          pebs_migrate_up(prefetch_page, prefetch_page->devdax_offset);
+                      }
+                  } else {
+                      // Update stride tracking
+                      pattern->stride = new_stride;
                   }
-                  #else
-                  if (samples_since_cool > SAMPLE_COOLING_THRESHOLD) {
-                    global_clock++;
-                    cools++;
-                    need_cool_dram = true;
-                    need_cool_nvm = true;
-                    samples_since_cool = 0;
-                  }
-                  #endif
+
+                  pattern->last_addr = ps->addr;
+                  pattern->count++;
                 }
-                #ifdef SAMPLE_BASED_COOLING
-                samples_since_cool++;
-                #endif
-                hemem_pages_cnt++;
               }
-              else {
-                other_pages_cnt++;
-              }
-            
-              total_pages_cnt++;
-            }
-            else {
-              zero_pages_cnt++;
-            }
-  	      break;
-        case PERF_RECORD_THROTTLE:
-        case PERF_RECORD_UNTHROTTLE:
-          //fprintf(stderr, "%s event!\n",
-          //   ph->type == PERF_RECORD_THROTTLE ? "THROTTLE" : "UNTHROTTLE");
-          if (ph->type == PERF_RECORD_THROTTLE) {
-              throttle_cnt++;
-          }
-          else {
-              unthrottle_cnt++;
-          }
-          break;
+              break;
+  
         default:
           fprintf(stderr, "Unknown type %u\n", ph->type);
           //assert(!"NYI");
