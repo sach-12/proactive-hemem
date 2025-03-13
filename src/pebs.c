@@ -55,8 +55,8 @@ int pfd[PEBS_NPROCS][NPBUFTYPES];
 volatile bool need_cool_dram = false;
 volatile bool need_cool_nvm = false;
 
-#define STRIDE_THRESHOLD 3 // Minimum occurrences to confirm a pattern
-#define PREFETCH_DISTANCE 4 // Number of strides ahead to prefetch
+#define STRIDE_THRESHOLD 2 // Minimum occurrences to confirm a pattern
+#define PREFETCH_DISTANCE 3 // Number of strides ahead to prefetch
 
 typedef struct {
   uint64_t last_addr;
@@ -226,6 +226,17 @@ void *pebs_scan_thread()
                 }
               }
               break;
+        case PERF_RECORD_THROTTLE:
+        case PERF_RECORD_UNTHROTTLE:
+          //fprintf(stderr, "%s event!\n",
+          //   ph->type == PERF_RECORD_THROTTLE ? "THROTTLE" : "UNTHROTTLE");
+          if (ph->type == PERF_RECORD_THROTTLE) {
+              throttle_cnt++;
+          }
+          else {
+              unthrottle_cnt++;
+          }
+          break;
   
         default:
           fprintf(stderr, "Unknown type %u\n", ph->type);
