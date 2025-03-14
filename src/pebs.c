@@ -613,7 +613,7 @@ void *pebs_policy_thread()
         continue;
       } 
     
-      for (int i=0;i<5;i++){
+      for (int i=0;i<10;i++){
         if(p!=NULL){
             for (tries = 0; tries < 2; tries++) {
               // find a free DRAM page
@@ -707,7 +707,7 @@ out:
     LOG_TIME("migrate: %f s\n", elapsed(&start, &end));
   
   }
-  
+
   return NULL;
 }
 
