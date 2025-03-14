@@ -613,7 +613,7 @@ void *pebs_policy_thread()
         continue;
       } 
     
-      for (i=0,i<5,i++){
+      for (int i=0;i<5;i++){
         if(p!=NULL){
             for (tries = 0; tries < 2; tries++) {
               // find a free DRAM page
@@ -682,11 +682,11 @@ void *pebs_policy_thread()
 
           }else{
             break;
-          }
-          
-        } 
-      }
+        }
+           
+      } 
     }
+    
 
     #ifdef COOL_IN_PLACE
     cur_cool_in_dram = partial_cool(&dram_hot_list, &dram_cold_list, true, cur_cool_in_dram);
@@ -705,8 +705,9 @@ out:
     }
  
     LOG_TIME("migrate: %f s\n", elapsed(&start, &end));
+  
   }
-
+  
   return NULL;
 }
 
