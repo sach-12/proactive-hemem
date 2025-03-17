@@ -44,7 +44,7 @@ gups-seq.o: gups-seq.c zipf.c gups.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c gups-seq.c zipf.c
 
 gups-fifo-dram: gups.o
-    $(CC) $(CFLAGS) $(INCLUDES) -o gups-fifo-dram gups.o zipf.o $(LIBS) -L$(HEMEMDIR) -lhemem-fifo-dram
+	$(CC) $(CFLAGS) $(INCLUDES) -o gups-fifo-dram gups.o zipf.o $(LIBS) -L$(HEMEMDIR) -lhemem-fifo-dram
 
 gups.o: gups.c zipf.c  gups.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c gups.c zipf.c

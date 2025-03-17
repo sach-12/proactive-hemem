@@ -136,54 +136,6 @@ static void fifo_migrate_up(struct hemem_page *page, uint64_t offset)
 static struct hemem_page* start_dram_page = NULL;
 static struct hemem_page* start_nvm_page = NULL;
 
-void *fifo_policy_thread() {
-    struct timeval start, end;
-    struct hemem_page *p, *np;
-    uint64_t old_offset;
-    double migrate_time;
-
-    for (;;) {
-        LOG("Running Policy Thread\n");
-        gettimeofday(&start, NULL);
-
-        p = dequeue_fifo(&dram_free_list);
-
-        if (p == NULL) {
-
-        p = dequeue_fifo(&dram_fifo_list);
-        if (p != NULL) {
-            np = dequeue_fifo(&nvm_free_list);
-            if (np != NULL) {
-                assert(!(np->present));
-
-                old_offset = p->devdax_offset;
-                fifo_migrate_down(p, np->devdax_offset);
-
-                np->devdax_offset = old_offset;
-                np->in_dram = true;
-                np->present = false;
-
-                enqueue_fifo(&nvm_fifo_list, p);
-                enqueue_fifo(&dram_fifo_list, np);
-            }
-        }
-        }
-        else {
-            enqueue_fifo(&dram_free_list, p);
-        }
-        gettimeofday(&end, NULL);
-        migrate_time = elapsed(&start, &end) * 1000000.0;
-        //if (migrate_time < (1.0 * PEBS_KSWAPD_INTERVAL)) {
-        //    LOG("Sleeping for %d\n", (uint64_t)((1.0 * PEBS_KSWAPD_INTERVAL) - migrate_time));
-            usleep(HEMEM_INTERVAL);//(uint64_t)((1.0 * PEBS_KSWAPD_INTERVAL) - migrate_time));
-        //}
-
-        LOG_TIME("migrate: %f s\n", elapsed(&start, &end));
-    }
-
-    return NULL;
-}
-
 
 static struct hemem_page* fifo_allocate_page() {
     struct timeval start, end;
@@ -335,12 +287,6 @@ void fifo_init(void)
   buffer = (uint64_t**)malloc(sizeof(uint64_t*) * CAPACITY);
   assert(buffer);
   free_page_ring = ring_buf_init(buffer, CAPACITY);
-
-//  int r = pthread_create(&scan_thread, NULL, pebs_scan_thread, NULL);
-//  assert(r == 0);
-
-  int r = pthread_create(&kswapd_thread, NULL, fifo_policy_thread, NULL);
-  assert(r == 0);
 
   LOG("Memory management policy is PEBS\n");
 

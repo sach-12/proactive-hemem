@@ -25,6 +25,3 @@ numactl -N0 -m0 -- ./gups-seq 16 1000000000 37 8 37 >> seq.txt
 #clear-caches
 echo "=== 38 ===" >> seq.txt
 numactl -N0 -m0 -- ./gups-seq 16 1000000000 38 8 38 >> seq.txt
-#clear-caches
-echo "=== 39 ===" >> seq.txt
-numactl -N0 -m0 -- ./gups-seq 16 1000000000 39 8 39 >> seq.txt
