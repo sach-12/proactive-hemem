@@ -16,6 +16,9 @@ gups-random: gups-random.o
 gups-seq: gups-seq.o
 	$(CC) $(CFLAGS) $(INCLUDES) -o gups-seq gups-seq.o zipf.o $(LIBS) -L$(HEMEMDIR) -lhemem-fifo-dram
 
+gups-seq-new: gups-seq-new.o
+	$(CC) $(CFLAGS) $(INCLUDES) -o gups-seq-new gups-seq-new.o zipf.o $(LIBS) -L$(HEMEMDIR) -lhemem
+
 gups-small: gups-small.o
 	$(CC) $(CFLAGS) $(INCLUDES) -o gups-small gups-small.o ../src/timer.o $(LIBS)
 
@@ -42,6 +45,9 @@ gups-random.o: gups-random.c zipf.c gups.h
 
 gups-seq.o: gups-seq.c zipf.c gups.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c gups-seq.c zipf.c
+
+gups-seq-new.o: gups-seq-new.c zipf.c gups.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c gups-seq-new.c zipf.c
 
 gups-fifo-dram: gups.o
 	$(CC) $(CFLAGS) $(INCLUDES) -o gups-fifo-dram gups.o zipf.o $(LIBS) -L$(HEMEMDIR) -lhemem-fifo-dram
