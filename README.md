@@ -98,7 +98,7 @@ which will run the bc algorithm with HeMem on a graph with 2^scale vertices.
 
 ## Proactive HeMem
 
-On top of the HeMem implementation, we have implemented Proactive HeMem, which is a version of HeMem that uses a proactive migration policy to move data between memory tiers. We implemented 3 different approaches to proactive migration:
+On top of the HeMem implementation, we have implemented Proactive HeMem, which is a version of HeMem that uses a proactive migration policy to move data between memory tiers. We implemented 3 different approaches to proactive migration. The link to the presentation slides for Proactive HeMem, which includes some initial results, can be found [here](https://docs.google.com/presentation/d/1EwmgLvLuy5wcBPVJ9qDFPuSjwzkhD60rcnaH2HqUroM/edit?usp=sharing).
 
 ### Stride-based Prefetching
 
