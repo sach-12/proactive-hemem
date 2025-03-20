@@ -100,6 +100,8 @@ which will run the bc algorithm with HeMem on a graph with 2^scale vertices.
 
 On top of the HeMem implementation, we have implemented Proactive HeMem, which is a version of HeMem that uses a proactive migration policy to move data between memory tiers. We implemented 3 different approaches to proactive migration. The link to the presentation slides for Proactive HeMem, which includes some initial results, can be found [here](https://docs.google.com/presentation/d/1EwmgLvLuy5wcBPVJ9qDFPuSjwzkhD60rcnaH2HqUroM/edit?usp=sharing).
 
+In order to reproduce the results of the report and slides, please run the bash script named run-seq.sh in microbenchmarks. 
+
 ### Stride-based Prefetching
 
 Stride-based prefetching is a simple proactive migration policy that introduces **stride pattern detection** to optimize memory access performance. The system now tracks recent memory accesses per CPU core, identifying repeated stride-based access patterns. Upon detection, it **proactively prefetches** future memory pages and migrates them from NVM to DRAM in advance, reducing access latency.
