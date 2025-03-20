@@ -96,3 +96,25 @@ The GapBS application can be found in the `apps/gapbs` directory. To run the BC 
 
 which will run the bc algorithm with HeMem on a graph with 2^scale vertices.
 
+## Proactive HeMem
+
+On top of the HeMem implementation, we have implemented Proactive HeMem, which is a version of HeMem that uses a proactive migration policy to move data between memory tiers. We implemented 3 different approaches to proactive migration. The link to the presentation slides for Proactive HeMem, which includes some initial results, can be found [here](https://docs.google.com/presentation/d/1EwmgLvLuy5wcBPVJ9qDFPuSjwzkhD60rcnaH2HqUroM/edit?usp=sharing).
+
+### Stride-based Prefetching
+
+Stride-based prefetching is a simple proactive migration policy that introduces **stride pattern detection** to optimize memory access performance. The system now tracks recent memory accesses per CPU core, identifying repeated stride-based access patterns. Upon detection, it **proactively prefetches** future memory pages and migrates them from NVM to DRAM in advance, reducing access latency.
+
+
+This policy is implemented in the [pattern-prefetch](https://github.com/sach-12/proactive-hemem/tree/pattern-prefetch) branch of the HeMem repository. To build and run this version of HeMem, follow the same instructions as above, but use the `pattern-prefetch` branch of the HeMem repository. Key modifications include updates to `pebs_scan_thread` for analyzing memory patterns and a new `StridePattern` structure to track address strides per core. Configurable constants like `STRIDE_THRESHOLD = 2` and `PREFETCH_DISTANCE = 3` control detection sensitivity and prefetching behavior.
+
+### Application Hints
+
+Application hints is a proactive migration policy that introduces a **custom application-defined memory management approach**, allowing developers to define their own policies based on application-specific access patterns. The **FIFO-DRAM priority policy** keeps frequently accessed pages in DRAM and migrates older pages to NVM in FIFO order when needed.
+
+This policy is implemented in the [app-hint](https://github.com/sach-12/proactive-hemem/tree/app-hint) branch of the HeMem repository. To build and run this version of HeMem, follow the same instructions as above, but use the `app-hint` branch of the HeMem repository. Key enhancements include the creation of a new **"fifo-dram" policy**, demonstrating the ease of custom policy development. This approach eliminates the need for separate **PEBS** or **policy threads**, reducing startup time. Designed for sequential access patterns, it optimizes memory access latency by keeping active pages in DRAM.
+
+### Sequential Prefetching
+
+Sequential prefetching is a proactive migration policy that enhances **memory access efficiency** by prefetching consecutive pages, optimizing sequential algorithms. When a hot page in the **NVM Hot List** is detected for migration, the system also **prefetches and migrates the next page** proactively. Experiments were conducted with different prefetch sizes: **1, 5, and 10 pages**.
+
+This policy is implemented in the [pebs-prefetch](https://github.com/sach-12/proactive-hemem/tree/pebs-prefetch) branch of the HeMem repository. To build and run this version of HeMem, follow the same instructions as above, but use the `pebs-prefetch` branch of the HeMem repository. Key modifications include updates to the **PEBS policy thread** for migrating consecutive pages and enhancements to the **page struct** and **scan thread** to prevent immediate migration back from DRAM to NVM. These improvements reduce memory access latency by ensuring data is available **before demand**.
