@@ -30,6 +30,10 @@ extern "C" {
 #include "policies/simple.h"
 #endif 
 
+#ifdef ALLOC_FIFO_DRAM
+#include "policies/fifo-dram.h"
+#endif
+
 #include "pebs.h"
 #include "timer.h"
 #include "interpose.h"
@@ -134,6 +138,12 @@ extern FILE *statsf;
   #define paging_init(...) simple_init(__VA_ARGS__)
   #define mmgr_remove(...) simple_remove_page(__VA_ARGS__)
   #define mmgr_stats(...) simple_stats(__VA_ARGS__)
+  #define policy_shutdown(...) while(0) {}
+#elif defined (ALLOC_FIFO_DRAM)
+  #define pagefault(...) fifo_pagefault(__VA_ARGS__)
+  #define paging_init(...) fifo_init(__VA_ARGS__)
+  #define mmgr_remove(...) fifo_remove_page(__VA_ARGS__)
+  #define mmgr_stats(...) fifo_stats(__VA_ARGS__)
   #define policy_shutdown(...) while(0) {}
 #endif
 

@@ -1240,11 +1240,11 @@ void hemem_print_stats(FILE *fd)
                migrations_up, 
                migrations_down,
                migration_waits);
-  fprintf(miss_ratio_f, "pid: [%u]\ttmigrations_up: %lu\ttmigrations_down: %lu\ttotal_migrations: %lu\t", 
-               getpid(),
-               migrations_up, 
-               migrations_down,
-               migrations_up + migrations_down);
+  // fprintf(miss_ratio_f, "pid: [%u]\ttmigrations_up: %lu\ttmigrations_down: %lu\ttotal_migrations: %lu\t", 
+  //              getpid(),
+  //              migrations_up, 
+  //              migrations_down,
+  //              migrations_up + migrations_down);
    mmgr_stats(); 
 }
 
